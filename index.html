@@ -80,49 +80,77 @@ select{padding:9px;border-radius:8px;background:rgba(0,0,0,.3);color:#fff;border
 <details class="panel"><summary>Regole in breve</summary>
 <p>2–4 giocatori, 108 carte (2 mazzi + 4 jolly), 13 carte a testa. A ogni turno: peschi (mazzo o scarto), puoi calare combinazioni, poi scarti una carta. Combinazioni: tris/poker di pari valore e semi diversi, oppure scala di almeno 3 carte dello stesso seme (l’asso vale 1 in A‑2‑3 e 11 in Q‑K‑A, niente giro). Il jolly sostituisce qualsiasi carta (max 1 nei tris). La prima apertura deve valere almeno 40 punti; poi puoi attaccare carte alle combinazioni sul tavolo (clic sulla combinazione). Chiude chi resta senza carte. Gli altri prendono i punti delle carte in mano (asso 11, figure 10, jolly 25) oppure 100 se non hanno aperto. A 101 punti la partita finisce e vince chi ne ha meno.</p></details>
 </main>
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script>
 (()=>{
  let myid;
  try{myid=localStorage.getItem('s40id');if(!myid){myid='u'+Math.random().toString(36).slice(2,10);localStorage.setItem('s40id',myid)}}
  catch(e){myid='u'+Math.random().toString(36).slice(2,10)}
  const rooms={};
- const R=c=>rooms[c]||(rooms[c]={code:c,st:null,subs:[],conns:[],peer:null,host:false,gc:null,err:null});
+ const R=c=>rooms[c]||(rooms[c]={code:c,st:null,subs:[],client:null,host:false,err:null});
  const clone=x=>x==null?x:JSON.parse(JSON.stringify(x));
  const snap=r=>({exists:!!r.st,data:()=>clone(r.st)});
  const fire=r=>r.subs.slice().forEach(f=>{try{f(snap(r))}catch(e){console.error(e)}});
- const bcast=r=>{r.conns.forEach(c=>{try{if(c.open)c.send({t:'s',d:r.st})}catch(e){}});
-  try{localStorage.setItem('s40st-'+r.code,JSON.stringify(r.st))}catch(e){}};
+
+ function initMqtt(r){
+  return new Promise((res,rej)=>{
+   if(r.client && r.client.connected){ res(); return; }
+   const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt', { clientId: 's40_' + myid + '_' + Math.random().toString(36).slice(2,6), clean: true });
+   r.client = client;
+   const topic = 'scala40/room/' + r.code;
+   client.on('connect', ()=>{
+    client.subscribe(topic, err=>{
+     if(!err){
+      client.publish(topic, JSON.stringify({t:'req', from:myid}));
+      res();
+     } else rej(err);
+    });
+   });
+   client.on('message', (top, msg)=>{
+    try{
+     const m = JSON.parse(msg.toString());
+     if(m.from === myid) return;
+     if(m.t === 's'){
+      r.st = m.d;
+      fire(r);
+     } else if(m.t === 'req' && r.host && r.st){
+      client.publish(topic, JSON.stringify({t:'s', d:r.st, from:myid}));
+     } else if(m.t === 'u' && r.host){
+      r.st = {...r.st, ...m.d};
+      fire(r);
+      client.publish(topic, JSON.stringify({t:'s', d:r.st, from:myid}));
+     }
+    }catch(e){}
+   });
+   client.on('error', e=>console.error(e));
+  });
+ }
+
+ const bcast=r=>{
+  try{
+   if(r.client && r.client.connected){
+    r.client.publish('scala40/room/' + r.code, JSON.stringify({t:'s', d:r.st, from:myid}));
+   }
+   localStorage.setItem('s40st-'+r.code,JSON.stringify(r.st));
+  }catch(e){}
+ };
+
  const commit=r=>{fire(r);bcast(r)};
- function startHost(r){return new Promise((res,rej)=>{
-  const p=new Peer('s40-'+r.code);r.peer=p;
-  p.on('open',()=>{r.host=true;res()});
-  p.on('error',e=>{if(!r.host)rej(e)});
-  p.on('connection',c=>{r.conns.push(c);
-   c.on('data',m=>{if(!m)return;if(m.t=='u')r.st={...r.st,...m.d};else if(m.t=='s')r.st=m.d;else if(m.t=='h'){c.send({t:'s',d:r.st});return}commit(r)});
-   c.on('open',()=>{try{c.send({t:'s',d:r.st})}catch(e){}});
-   c.on('close',()=>{r.conns=r.conns.filter(x=>x!==c)})})})}
- function guest(r){return new Promise((res,rej)=>{
-  const p=new Peer();r.peer=p;let done=0;
-  const to=setTimeout(()=>{if(!done){done=1;rej(new Error('timeout'))}},9000);
-  p.on('error',e=>{if(!done){done=1;clearTimeout(to);rej(e)}else if(r.err)r.err(e)});
-  p.on('open',()=>{const c=p.connect('s40-'+r.code,{reliable:true});r.gc=c;
-   c.on('data',m=>{if(m&&m.t=='s'){r.st=m.d;if(!done){done=1;clearTimeout(to);res()}fire(r)}});
-   c.on('close',()=>{if(r.err)r.err(new Error('closed'))})})})}
- function reset(r){try{if(r.peer)r.peer.destroy()}catch(e){}r.peer=null;r.gc=null;r.host=false}
+
  const DOC=path=>{const c=path.split('/')[1],r=R(c);return{
   get:async()=>{
+   await initMqtt(r);
    if(r.st)return snap(r);
    try{const sv=JSON.parse(localStorage.getItem('s40st-'+c)||'null');
-    if(sv&&sv.host==myid){r.st=sv;await startHost(r);return snap(r)}}catch(e){r.st=null;reset(r)}
-   try{await guest(r)}catch(e){r.st=null;reset(r)}
+    if(sv&&sv.host==myid){r.st=sv;r.host=true;bcast(r);return snap(r)}}catch(e){}
    return snap(r)},
-  set:async d=>{r.st=clone(d);
-   if(!r.host&&!r.gc){await startHost(r);commit(r);return}
-   if(r.host)commit(r);else r.gc.send({t:'s',d:r.st})},
-  update:async d=>{
+  set:async d=>{r.st=clone(d);await initMqtt(r);
+   if(!r.st.host) r.st.host = myid;
+   if(r.st.host == myid) r.host = true;
+   commit(r)},
+  update:async d=>{await initMqtt(r);
    if(r.host){r.st={...r.st,...clone(d)};commit(r)}
-   else if(r.gc)r.gc.send({t:'u',d:clone(d)})},
+   else{r.client.publish('scala40/room/' + r.code, JSON.stringify({t:'u', d:clone(d), from:myid}))}},
   onSnapshot:(f,err)=>{r.subs.push(f);if(err)r.err=err;setTimeout(()=>{if(r.st)f(snap(r))},0);return()=>{r.subs=r.subs.filter(x=>x!==f)}}}};
  window.claude={use:async n=>n=='db'?{doc:DOC}:{id:async()=>myid}};
 })();
@@ -337,7 +365,7 @@ $('bc').onclick=()=>{if(gn())enter(rc(),true)};
 $('bj').onclick=()=>{const c=$('cd').value.trim().toUpperCase();if(gn()&&c.length==4)enter(c)};
 (async()=>{
  try{db=await claude.use('db');user=await claude.use('user');if(user)me=await user.id()}catch(e){}
- if(!db||!me){toast('Accedi a Claude e apri il link condiviso per giocare.');return}
+ if(!db||!me){toast('Inserisci il nome ed entra in una stanza per giocare.');return}
  if(user.can&&user.can('data.write')===false)toast('Errore di accesso.');
  try{const s=JSON.parse(localStorage.getItem('s40')||'{}');if(s.nick)$('nick').value=s.nick;if(s.code&&s.nick){nick=s.nick;enter(s.code)}}catch(e){}
 })();
