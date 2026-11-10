@@ -7,28 +7,30 @@
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15181a;--fg:#ece9e1;--panel:#22272a;--bd:#3a4145;--acc:#3aa56a;--felt:#14452b;color-scheme:dark}}
 :root[data-theme="dark"]{--bg:#15181a;--fg:#ece9e1;--panel:#22272a;--bd:#3a4145;--acc:#3aa56a;--felt:#14452b;color-scheme:dark}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;overflow-x:hidden}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;overflow-x:hidden;user-select:none;-webkit-user-select:none}
 main{max-width:760px;margin:0 auto;padding:12px}
 h1{margin:4px 0;font-size:24px}h2,h3{margin:12px 0 6px}
 .panel,#game{background:var(--panel);border:1px solid var(--bd);border-radius:12px;padding:12px;margin:10px 0}
 .st{min-height:1.4em;color:var(--acc);font-weight:600;margin:4px 0}
 .row{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap}
 input{padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--fg);font-size:16px;min-width:0}
-button{padding:9px 14px;border:0;border-radius:8px;background:var(--acc);color:#fff;font-size:15px;font-weight:600;cursor:pointer}
+button{padding:8px 12px;border:0;border-radius:8px;background:var(--acc);color:#fff;font-size:14px;font-weight:600;cursor:pointer}
 button:disabled{opacity:.4}
 button.sec{background:transparent;color:var(--fg);border:1px solid var(--bd)}
 .note,.code{opacity:.75;font-size:14px}
 .pbar{display:flex;gap:6px;flex-wrap:wrap}
-.pp{flex:1;min-width:120px;border:1px solid var(--bd);border-radius:8px;padding:6px;display:flex;flex-direction:column;font-size:13px}
+.pp{flex:1;min-width:110px;border:1px solid var(--bd);border-radius:8px;padding:6px;display:flex;flex-direction:column;font-size:12px}
 .pp.on{border-color:#e8a400;box-shadow:0 0 0 2px #e8a400}
 .tbl,.piles,.felt{background:var(--felt);border-radius:10px;padding:8px;color:#fff}
-.meld{display:inline-flex;margin:3px;padding:3px;background:rgba(0,0,0,.2);border-radius:8px;cursor:pointer;flex-wrap:wrap}
-.piles{display:flex;gap:14px;align-items:center;margin-top:8px}
+.meld{display:inline-flex;margin:3px;padding:3px;background:rgba(0,0,0,.2);border-radius:8px;cursor:pointer;flex-wrap:wrap;transition:outline .2s}
+.meld.drag-over{outline:2px dashed #ffd76a;background:rgba(255,255,255,.25)}
+.piles{display:flex;gap:14px;align-items:center;margin-top:8px;transition:outline .2s}
+.piles.drag-over{outline:2px dashed #ff4d4d;border-radius:10px}
 .card{display:inline-flex;align-items:center;justify-content:center;width:40px;height:58px;margin:2px;border:1px solid #999;border-radius:6px;background:#fff;color:#222;font-weight:700;font-size:15px;cursor:pointer;user-select:none;white-space:pre-line;text-align:center}
 .card.red{color:#c0282d}
 .card.back{background:#2b4f9e;color:#fff;font-size:11px}
-.card.sel{transform:translateY(-10px);outline:2px solid #e8a400}
-.hand{display:flex;flex-wrap:wrap;padding:12px 0 4px;justify-content:center}
+.card.sel{transform:translateY(-12px);outline:2px solid #e8a400}
+.hand{display:flex;flex-wrap:wrap;padding:12px 0 4px;justify-content:center;min-height:70px}
 details p{font-size:14px}
 </style><style>
 body{min-height:100vh;color:#f3efe4;background:radial-gradient(circle at 15% 0,#2b4d7a 0,transparent 45%),radial-gradient(circle at 90% 100%,#5a2a52 0,transparent 40%),#0d2a1e}
@@ -36,7 +38,7 @@ h1{font-size:32px;text-align:center;letter-spacing:1px;background:linear-gradien
 .panel{background:rgba(255,255,255,.08);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.18);color:#f3efe4;border-radius:16px}
 #game{background:radial-gradient(ellipse at 50% 40%,#2c8c58,#145233 75%);border:6px solid #5a3a1e;border-radius:22px;color:#f3efe4;box-shadow:inset 0 0 40px rgba(0,0,0,.45),0 10px 30px rgba(0,0,0,.4)}
 input{background:rgba(0,0,0,.3);color:#fff;border-color:rgba(255,255,255,.25)}
-.st{color:#ffd76a;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.st{color:#ffd76a;text-shadow:0 1px 2px rgba(0,0,0,.5);text-align:center}
 .note,.code{color:#e8efe6;opacity:.8}
 button{background:linear-gradient(#f4c94f,#d29a1e);color:#2a1b00;box-shadow:0 3px 8px rgba(0,0,0,.3);transition:transform .1s,filter .15s}
 button:hover:not(:disabled){filter:brightness(1.1);transform:translateY(-1px)}button:active{transform:scale(.96)}
@@ -45,6 +47,7 @@ button.sec{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,
 .pp.on{border-color:#ffc83a;animation:pulse 1.4s infinite}
 @keyframes pulse{50%{box-shadow:0 0 0 6px rgba(255,200,58,.35)}}
 .tbl,.piles,.felt{background:rgba(0,0,0,.2);box-shadow:inset 0 2px 10px rgba(0,0,0,.35)}
+.tbl.drag-over{background:rgba(255,215,106,.2);border-radius:10px}
 .meld{background:rgba(255,255,255,.1);transition:transform .15s,background .15s}.meld:hover{background:rgba(255,255,255,.22);transform:scale(1.03)}
 .card{width:46px;height:66px;flex-direction:column;line-height:1;gap:2px;box-shadow:0 2px 6px rgba(0,0,0,.4);transition:transform .15s,box-shadow .15s}
 .card b{font-size:14px}.card i{font-style:normal;font-size:24px}
@@ -57,14 +60,14 @@ button.sec{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,
 .cf{position:fixed;top:-16px;width:10px;height:14px;z-index:99;pointer-events:none;animation:fall linear forwards}
 @keyframes fall{to{transform:translateY(108vh) rotate(720deg)}}
 @media(max-width:480px){
-  main{padding:6px}
-  #game{padding:8px;border-width:3px;border-radius:14px}
+  main{padding:4px}
+  #game{padding:6px;border-width:2px;border-radius:14px}
   .card{width:36px;height:54px}.card i{font-size:18px}.card b{font-size:11px}
-  .hand{padding:6px 0}
-  .row{gap:4px}
-  button{padding:8px 10px;font-size:13px}
-  .pp{min-width:90px;font-size:11px;padding:4px}
-  .opp .card{width:20px;height:30px}.opp .card i{font-size:12px}.opp .card b{font-size:8px}
+  .hand{padding:4px 0}
+  .row{gap:4px;justify-content:center}
+  button{padding:6px 10px;font-size:12px}
+  .pp{min-width:80px;font-size:10px;padding:3px}
+  .opp .card{width:18px;height:28px}.opp .card i{font-size:10px}.opp .card b{font-size:7px}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .fl{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#2a1b00;color:#ffd76a;border:1px solid #ffd76a;padding:10px 16px;border-radius:12px;z-index:100;max-width:90vw;text-align:center;animation:deal .3s backwards}
@@ -91,7 +94,7 @@ select{padding:7px;border-radius:8px;background:rgba(0,0,0,.3);color:#fff;border
 </section>
 <section id="game" hidden></section>
 <details class="panel"><summary>Regole in breve</summary>
-<p>2–4 giocatori, 108 carte (2 mazzi + 4 jolly), 13 carte a testa. A ogni turno: peschi (mazzo o scarto), puoi calare combinazioni, poi scarti una carta. Combinazioni: tris/poker di pari valore e semi diversi, oppure scala di almeno 3 carte dello stesso seme (l’asso vale 1 in A‑2‑3 e 11 in Q‑K‑A, niente giro). Il jolly sostituisce qualsiasi carta (max 1 nei tris). La prima apertura deve valere almeno 40 punti; poi puoi attaccare carte alle combinazioni sul tavolo (clic sulla combinazione). Chiude chi resta senza carte. Gli altri prendono i punti delle carte in mano (asso 11, figure 10, jolly 25) oppure 100 se non hanno aperto. A 101 punti la partita finisce e vince chi ne ha meno.</p></details>
+<p>2–4 giocatori, 108 carte. Pesca, cala o scarta semplicemente <b>trascinando le carte con il dito/mouse</b>!</p></details>
 </main>
 <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
 <script>
@@ -225,9 +228,33 @@ function pmove(ev){if(!drag)return;const dx=ev.clientX-drag.x,dy=ev.clientY-drag
  drag.on=1;const s=drag.el.style;s.transition='none';s.animation='none';s.zIndex=30;s.transform='translate('+dx+'px,'+dy+'px) scale(1.12)'}
 function pup(ev){if(!drag)return;const d=drag;drag=null;
  if(d.on){noClick=1;setTimeout(()=>{noClick=0},0);
+  const discardPile = document.querySelector('.piles');
+  const tableArea = document.querySelector('.tbl');
+  
+  if (discardPile && isOver(ev, discardPile)) {
+    sel.clear(); sel.add(d.id); discard(); return;
+  }
+  
+  if (tableArea && isOver(ev, tableArea)) {
+    if (!sel.has(d.id)) sel.add(d.id);
+    let targetMeldIndex = -1;
+    document.querySelectorAll('.meld').forEach((mEl, idx)=>{
+      if (isOver(ev, mEl)) targetMeldIndex = idx;
+    });
+    if (targetMeldIndex >= 0) { attach(targetMeldIndex); }
+    else { stageOrMeld(); }
+    return;
+  }
+
   let best=null,bd=1e9;document.querySelectorAll('#game .hand .card').forEach(x=>{if(x===d.el)return;const r=x.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dd=Math.hypot(ev.clientX-cx,ev.clientY-cy);if(dd<bd){bd=dd;best={id:+x.dataset.i,after:ev.clientX>cx}}});
   if(best){myOrd=myOrd.filter(i=>i!=d.id);let k=myOrd.indexOf(best.id);if(k<0)k=myOrd.length;myOrd.splice(best.after?k+1:k,0,d.id)}}
  if(d.on||late){late=0;render()}}
+
+function isOver(ev, el) {
+  const r = el.getBoundingClientRect();
+  return ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
+}
+
 let fly={},warm=false;
 function grab(ids,el){ids.forEach(id=>{const e=el||document.querySelector('#game [data-i="'+id+'"]');if(e){const r=e.getBoundingClientRect();fly[id]={x:r.left,y:r.top,w:r.width}}})}
 function runFly(){const n=G.players.length,who=G.drawn?G.turn:(G.turn+n-1)%n,chip=G.players[who]&&G.players[who].id!=me?document.querySelectorAll('#game .pp')[who]:null;
@@ -249,26 +276,17 @@ function draw(fd){if(!myTurn())return;if(G.drawn)return toast('Hai già pescato'
  if(!c)return;grab([c.i],fd?null:document.querySelector('#game .piles .back'));
  ref.update({stock:st,discard:ds,hands:{...G.hands,[me]:[...G.hands[me],c]},drawn:true,dc:fd?c.i:null,msg:nm(me)+(fd?' pesca dallo scarto':' pesca dal mazzo')})}
 
-function stage(){if(!myTurn()||!G.drawn)return toast('Prima devi pescare');
- const m=meld(hand().filter(c=>sel.has(c.i)));if(!m)return toast('Combinazione non valida');
- grab([...sel]);pend.push(m);sel.clear();render()}
+function stageOrMeld(){if(!myTurn()||!G.drawn)return toast('Prima devi pescare dal mazzo');
+ const cs=hand().filter(c=>sel.has(c.i));
+ const m=meld(cs);if(!m)return toast('Combinazione non valida');
+ if(!opn(me) && m.pts < 40) return toast('Per aprire servono almeno 40 punti');
+ const patch={table:[...G.table,{cards:m.cards}],opened:{...G.opened,[me]:G.round},hands:{...G.hands,[me]:hand().filter(c=>!sel.has(c.i))},msg:nm(me)+' cala una combinazione'};
+ grab([...sel]);sel.clear();
+ patch.hands[me].length?ref.update(patch):finish(me,patch.hands,patch)}
 
-function confirmM(){const t=pend.reduce((a,m)=>a+m.pts,0);
- if(!opn(me)&&t<40)return toast('Per aprire servono almeno 40 punti (ora '+t+')');
- const hd=hand(),hands={...G.hands,[me]:hd},
-  patch={table:[...G.table,...pend.map(m=>({cards:m.cards}))],opened:{...G.opened,[me]:G.round},hands,msg:nm(me)+' cala '+pend.length+(pend.length>1?' combinazioni':' combinazione')};
- grab(pend.flatMap(m=>m.cards.map(c=>c.i)));pend=[];sel.clear();hd.length?ref.update(patch):finish(me,hands,patch)}
-
-function attach(i){if(!myTurn()||!G.drawn)return;
+function attach(i){if(!myTurn()||!G.drawn)return toast('Prima devi pescare');
  if(!opn(me))return toast('Devi prima aprire con 40 punti');
- if(pend.length)return toast('Conferma o annulla le combinazioni');
- const cs=hand().filter(c=>sel.has(c.i));if(!cs.length)return toast('Seleziona le carte da attaccare');
- if(swap){const tc=G.table[i].cards;if(cs.length!=1||!cs[0].r)return toast('Seleziona una sola carta (non un jolly)');
-  for(let j=0;j<tc.length;j++){if(tc[j].r)continue;const t=tc.slice();t[j]=cs[0];const m2=meld(t);
-   if(m2&&(asSet(t)||m2.cards[j]===cs[0])){const tb=[...G.table];tb[i]={cards:m2.cards};
-    const hs={...G.hands,[me]:[...hand().filter(c=>c!=cs[0]),tc[j]]};sel.clear();swap=0;
-    return ref.update({table:tb,hands:hs,msg:nm(me)+' prende un jolly dal tavolo'})}}
-  return toast('Questa carta non può sostituire nessun jolly di questa combinazione')}
+ const cs=hand().filter(c=>sel.has(c.i));if(!cs.length)return;
  const m=meld([...G.table[i].cards,...cs]);if(!m)return toast('Non si può attaccare qui');
  const t=[...G.table];t[i]={cards:m.cards};
  grab([...sel]);const hd=hand().filter(c=>!sel.has(c.i)),hands={...G.hands,[me]:hd};sel.clear();
@@ -276,20 +294,14 @@ function attach(i){if(!myTurn()||!G.drawn)return;
 
 function swapJ(i,j){if(!myTurn()||!G.drawn)return toast('Prima devi pescare');
  if(!opn(me))return toast('Devi prima aprire per prendere un jolly');
- if(pend.length)return toast('Conferma o annulla le combinazioni');
- const cs=hand().filter(c=>sel.has(c.i));if(cs.length!=1||!cs[0].r)return toast('Seleziona dalla mano la carta che sostituisce il jolly');
+ const cs=hand().filter(c=>sel.has(c.i));if(cs.length!=1||!cs[0].r)return toast('Seleziona la carta che sostituisce il jolly');
  const tc=G.table[i].cards,t=tc.slice();t[j]=cs[0];const m2=meld(t);
- if(!m2||!(asSet(t)||m2.cards[j]===cs[0]))return toast('Questa carta non può sostituire quel jolly');
+ if(!m2||!(asSet(t)||m2.cards[j]===cs[0]))return toast('Carta non valida per il jolly');
  grab([...sel,tc[j].i]);const tb=[...G.table];tb[i]={cards:m2.cards};const hs={...G.hands,[me]:[...hand().filter(c=>c!=cs[0]),tc[j]]};sel.clear();swap=0;
  ref.update({table:tb,hands:hs,msg:nm(me)+' prende un jolly dal tavolo'})}
-function autoAtt(){const cs=hand().filter(c=>sel.has(c.i));if(!cs.length)return toast('Seleziona le carte da attaccare');
- const i=G.table.findIndex(m=>meld([...m.cards,...cs]));if(i<0)return toast('Nessuna combinazione sul tavolo accetta queste carte');swap=0;attach(i)}
-function undo(){const c=(G.hands[me]||[]).find(x=>x.i==G.dc);if(!myTurn()||!c||pend.length)return;
- sel.clear();ref.update({hands:{...G.hands,[me]:G.hands[me].filter(x=>x!=c)},discard:[...G.discard,c],drawn:false,dc:null,msg:nm(me)+' rimette la carta sullo scarto'})}
+
 function discard(){if(!myTurn()||!G.drawn)return toast('Prima devi pescare');
- if(G.dc!=null&&G.hands[me].some(c=>c.i==G.dc)&&!pend.some(m=>m.cards.some(c=>c.i==G.dc)))return toast('Hai preso dallo scarto: devi usare quella carta (attaccandola al tavolo o in una nuova combinazione) oppure rimetterla sullo scarto');
- if(pend.length)return toast('Conferma o annulla le combinazioni');
- if(sel.size!=1)return toast('Seleziona una sola carta da scartare');
+ if(sel.size!=1)return toast('Trascina 1 sola carta sullo scarto');
  const c=hand().find(c=>sel.has(c.i)),hd=hand().filter(x=>x!=c),hands={...G.hands,[me]:hd};grab([c.i]);sel.clear();
  const patch={hands,discard:[...G.discard,c],drawn:false,dc:null,turn:(G.turn+1)%G.players.length,msg:nm(me)+' scarta '+cname(c)};
  hd.length?ref.update(patch):finish(me,hands,patch)}
@@ -325,49 +337,33 @@ function leave(){clearTimeout(bt);if(unsub)unsub();unsub=null;
  G=null;ref=null;code=null;tk='';tries=0;pend=[];sel.clear();$('game').hidden=true;$('login').hidden=false;toast('')}
 function render(){if(drag){late=1;return}render0();if(G)runFly()}
 function render0(){if(!G)return;const g=$('game');g.textContent='';
- const lv=h('button','sec','Esci dalla partita');lv.style.cssText='float:right;padding:5px 10px;font-size:13px';
- lv.onclick=()=>{if(G.phase=='play'&&lv.dataset.a!='1'){lv.dataset.a='1';lv.textContent='Sicuro? Tocca di nuovo';setTimeout(()=>{lv.dataset.a='';lv.textContent='Esci dalla partita'},3000);return}leave()};
- g.append(lv,h('p','code','Stanza '+code+' · dai questo codice ai tuoi amici'));
+ const lv=h('button','sec','Esci');lv.style.cssText='float:right;padding:4px 8px;font-size:12px';
+ lv.onclick=()=>leave();
+ g.append(lv,h('p','code','Stanza '+code));
  if(G.phase=='lobby'){
   g.append(h('h3',0,'Giocatori ('+G.players.length+'/'+(G.max||4)+')'));
-  if(G.players.length<(G.max||4))g.append(h('p','note','Mancano '+((G.max||4)-G.players.length)+' giocatori: invita gli amici con il codice o aggiungi dei bot'));
   G.players.forEach(p=>g.append(h('div',0,'• '+p.name+(p.id==G.host?' 👑':''))));
   if(G.host==me){const b=h('button',0,'Inizia la partita');b.disabled=G.players.length<(G.max||4);b.onclick=()=>start(true);g.append(b);
-   if(G.players.length<(G.max||4)){const a=h('button','sec','Aggiungi bot');a.style.marginLeft='8px';a.onclick=()=>ref.update({players:[...G.players,{id:'bot'+Math.random().toString(36).slice(2,6),name:'Bot '+(G.players.filter(p=>isBot(p.id)).length+1)}]});g.append(a)}}
+   if(G.players.length<(G.max||4)){const a=h('button','sec','+ Bot');a.style.marginLeft='8px';a.onclick=()=>ref.update({players:[...G.players,{id:'bot'+Math.random().toString(36).slice(2,6),name:'Bot '+(G.players.filter(p=>isBot(p.id)).length+1)}]});g.append(a)}}
   else g.append(h('p','note','In attesa che l’host inizi…'));return}
  const pb=h('div','pbar');
  G.players.forEach((p,i)=>{const e=h('div','pp'+(p.id!=me?' o':'')+(i==G.turn&&G.phase=='play'?' on':''));
-  e.append(h('b',0,p.name+(p.id==me?' (tu)':'')),h('span',0,(G.hands[p.id]||[]).length+' carte · '+(G.scores[p.id]||0)+' pt'+(opn(p.id)?' · aperto':'')));
-  if(p.id!=me){const hh=G.hands[p.id]||[],pl=G.phase=='play',oh=h('div','opp'+(pl?' fan':''));
+  e.append(h('b',0,p.name+(p.id==me?' (tu)':'')),h('span',0,(G.hands[p.id]||[]).length+' carte · '+(G.scores[p.id]||0)+' pt'));
+  if(p.id!=me){const hh=G.hands[p.id]||[],pl=G.phase=='phase'=='play',oh=h('div','opp'+(pl?' fan':''));
    if(pl)hh.forEach((c,k)=>{const kk='o'+c.i,fr=!seen.has(kk);seen.add(kk);const e2=h('div','card back'+(fr?' fresh':'')),a=(k-(hh.length-1)/2)*3.5;e2.style.transform='rotate('+a+'deg) translateY('+Math.abs(a)*.6+'px)';oh.append(e2)});
    else[...hh].sort((a,b)=>a.s-b.s||a.r-b.r).forEach(c=>oh.append(card(c,0,'o')));e.append(oh)}pb.append(e)});
  g.append(pb);
- if(G.phase=='over'){
-  g.append(h('h2','win',G.over?'🏆 Partita finita!':'🎉 Mano vinta da '+nm(G.winner)));if(cfk!=G.round){cfk=G.round;confetti()}
-  const so=[...G.players].sort((a,b)=>G.scores[a.id]-G.scores[b.id]);
-  so.forEach(p=>g.append(h('div',0,p.name+': '+G.scores[p.id]+' punti')));
-  if(G.over)g.append(h('p',0,'🏆 Vince '+nm(so[0].id)+' con il punteggio più basso'));
-  if(G.host==me){const b=h('button',0,G.over?'Nuova partita':'Prossima mano');b.style.marginTop='10px';b.onclick=()=>start(G.over);g.append(b)}
-  else g.append(h('p','note','Attendi che l’host avvii la prossima mano.'));return}
  const mt=myTurn(),tb=h('div','tbl');
- G.table.forEach((m,i)=>{const r=h('div','meld');m.cards.forEach((c,j)=>r.append(card(c,c.r?0:ev=>{ev.stopPropagation();swapJ(i,j)},'t')));r.onclick=()=>attach(i);tb.append(r)});
- if(!G.table.length)tb.append(h('span','note','Nessuna combinazione sul tavolo'));
+ G.table.forEach((m,i)=>{const r=h('div','meld');m.cards.forEach((c,j)=>r.append(card(c,c.r?0:ev=>{ev.stopPropagation();swapJ(i,j)},'t')));tb.append(r)});
+ if(!G.table.length)tb.append(h('span','note','📌 Trascina le carte qui per calare'));
  g.append(h('h3',0,'Tavolo'),tb);
  const pl=h('div','piles'),sk=h('div','card back','Mazzo\n'+G.stock.length);sk.onclick=()=>draw(false);pl.append(sk);
- const top=G.discard[G.discard.length-1];if(top)pl.append(card(top,()=>draw(true),'d'));pl.append(h('span',0,'Scarto'));g.append(pl);
- g.append(h('p','st',mt?(G.drawn?((G.dc!=null&&(G.hands[me]||[]).some(c=>c.i==G.dc))?(opn(me)?'Carta presa dallo scarto: attaccala a una combinazione sul tavolo, calala in una nuova oppure rimettila sullo scarto':'Carta presa dallo scarto: devi aprire con 40 punti usandola, oppure rimetterla sullo scarto'):'Tocca a te: cala, attacca o scarta'):'Tocca a te: pesca dal mazzo o dallo scarto'):'Turno di '+G.players[G.turn].name));
- if(pend.length){const f=h('div','felt');pend.forEach(m=>{const r=h('div','meld');m.cards.forEach(c=>r.append(card(c)));f.append(r)});
-  f.append(h('div','note','Pronte: '+pend.reduce((a,m)=>a+m.pts,0)+' punti'+(opn(me)?'':' (per aprire ne servono 40)')));g.append(f)}
+ const top=G.discard[G.discard.length-1];if(top)pl.append(card(top,()=>draw(true),'d'));pl.append(h('span',0,'🗑️ Scarti'));g.append(pl);
+ g.append(h('p','st',mt?(G.drawn?'👆 Trascina la carta sul Tavolo per calare o sullo Scarto per finire':'Tocca il mazzo per pescare'):'Turno di '+G.players[G.turn].name));
  let hd=hand();const all=new Set((G.hands[me]||[]).map(c=>c.i));myOrd=myOrd.filter(i=>all.has(i));(G.hands[me]||[]).forEach(c=>{if(!myOrd.includes(c.i))myOrd.push(c.i)});hd.sort((a,b)=>myOrd.indexOf(a.i)-myOrd.indexOf(b.i));
- const hr=h('div','hand');hd.forEach(c=>{const el=card(c,()=>{if(noClick)return;sel.has(c.i)?sel.delete(c.i):sel.add(c.i);render()});el.onpointerdown=ev=>pdown(ev,c,el);el.onpointermove=pmove;el.onpointerup=pup;el.onpointercancel=()=>{drag=null;render()};hr.append(el)});g.append(hr);g.append(h('p','note','Trascina le carte per riordinarle'));
+ const hr=h('div','hand');hd.forEach(c=>{const el=card(c,()=>{if(noClick)return;sel.has(c.i)?sel.delete(c.i):sel.add(c.i);render()});el.onpointerdown=ev=>pdown(ev,c,el);el.onpointermove=pmove;el.onpointerup=pup;el.onpointercancel=()=>{drag=null;render()};hr.append(el)});g.append(hr);
  const bar=h('div','row'),B=(t,f,cls,dis)=>{const b=h('button',cls,t);b.onclick=f;b.disabled=!!dis;bar.append(b)};
- B('Cala selezione',stage,0,!mt||sel.size<3);
- if(opn(me))B('Attacca al tavolo',autoAtt,0,!mt||!G.drawn||!sel.size);
- if(pend.length){B('Conferma',confirmM);B('Annulla',()=>{pend=[];render()},'sec')}
- B('Scarta',discard,0,!mt||sel.size!=1);
- if(mt&&G.drawn&&G.dc!=null&&(G.hands[me]||[]).some(c=>c.i==G.dc)&&!pend.length)B('Rimetti sullo scarto',undo,'sec');
- if(opn(me))B('Scambia jolly: '+(swap?'sì':'no'),()=>{swap=swap?0:1;toast(swap?'Seleziona la carta giusta e tocca la combinazione col jolly':'');render()},'sec',!mt||!G.drawn);
- B('Ordina per '+(ord==1?'valore':'seme'),()=>{ord=ord==1?2:1;const a=[...(G.hands[me]||[])];a.sort(ord==1?(x,y)=>x.s-y.s||x.r-y.r:(x,y)=>x.r-y.r||x.s-y.s);myOrd=a.map(c=>c.i);render()},'sec');
+ B('Ordina: '+(ord==1?'Valore':'Seme'),()=>{ord=ord==1?2:1;const a=[...(G.hands[me]||[])];a.sort(ord==1?(x,y)=>x.s-y.s||x.r-y.r:(x,y)=>x.r-y.r||x.s-y.s);myOrd=a.map(c=>c.i);render()},'sec');
  g.append(bar)}
 
 async function enter(c,create){code=c;ref=db.doc('games/'+c);
