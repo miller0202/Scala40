@@ -343,13 +343,19 @@ function render0(){if(!G)return;const g=$('game');g.textContent='';
  if(isMt&&!wasMyTurn){try{if(navigator.vibrate)navigator.vibrate([120,60,120])}catch(e){}}
  wasMyTurn=!!isMt;
  const lv=h('button','sec','Esci dalla partita');lv.style.cssText='float:right;padding:5px 10px;font-size:13px';
+ lv.onclick=()=>{if(G.phase=='play'&&lv.dataset.a!='1'){lv.dataset.a='1';lv.textContent='Sicuro? Tocca di nuovo';setTimeout(()=>{lv.dataset.a='';lv.textContent='Esci dalla partita'},3000);return}leave()};
+ g.append(lv,h('p','code','Stanza '+code+' · dai questo codice ai tuoi amici'));
+ if(G.phase=='lobby'){
+  g.append(h('h3',0,'Giocatori ('+G.players.length+'/'+(G.max||4)+')'));
+  if(G.players.length<(G.max||4))g.append(h('p','note','Mancano '+((G.max||4)-G.players.length)+' giocatori: invita gli amici con il codice o aggiungi dei bot'));
+  G.players.forEach(p=>g.append(h('div',0,'• '+p.name+(p.id==G.host?' 👑':''))));
   if(G.host==me){const b=h('button',0,'Inizia la partita');b.disabled=G.players.length<(G.max||4);b.onclick=()=>start(true);g.append(b);
    if(G.players.length<(G.max||4)){const a=h('button','sec','+ Bot');a.style.marginLeft='8px';a.onclick=()=>ref.update({players:[...G.players,{id:'bot'+Math.random().toString(36).slice(2,6),name:'Bot '+(G.players.filter(p=>isBot(p.id)).length+1)}]});g.append(a)}}
   else g.append(h('p','note','In attesa che l’host inizi…'));return}
  const pb=h('div','pbar');
  G.players.forEach((p,i)=>{const e=h('div','pp'+(p.id!=me?' o':'')+(i==G.turn&&G.phase=='play'?' on':''));
   e.append(h('b',0,p.name+(p.id==me?' (tu)':'')),h('span',0,(G.hands[p.id]||[]).length+' carte · '+(G.scores[p.id]||0)+' pt'));
-  if(p.id!=me){const hh=G.hands[p.id]||[],pl=G.phase=='phase'=='play',oh=h('div','opp'+(pl?' fan':''));
+  if(p.id!=me){const hh=G.hands[p.id]||[],pl=G.phase=='play',oh=h('div','opp'+(pl?' fan':''));
    if(pl)hh.forEach((c,k)=>{const kk='o'+c.i,fr=!seen.has(kk);seen.add(kk);const e2=h('div','card back'+(fr?' fresh':'')),a=(k-(hh.length-1)/2)*3.5;e2.style.transform='rotate('+a+'deg) translateY('+Math.abs(a)*.6+'px)';oh.append(e2)});
    else[...hh].sort((a,b)=>a.s-b.s||a.r-b.r).forEach(c=>oh.append(card(c,0,'o')));e.append(oh)}pb.append(e)});
  g.append(pb);
@@ -361,7 +367,9 @@ function render0(){if(!G)return;const g=$('game');g.textContent='';
  const top=G.discard[G.discard.length-1];if(top)pl.append(card(top,()=>draw(true),'d'));pl.append(h('span',0,'Scarto'));g.append(pl);
  const turnMsg=mt?(G.drawn?((G.dc!=null&&(G.hands[me]||[]).some(c=>c.i==G.dc))?(opn(me)?'🟢 TOCCA A TE · Usa la carta presa dallo scarto o rimettila giù':'🟢 TOCCA A TE · Apri con 40 pt usando lo scarto o rimettilo giù'):'🟢 È IL TUO TURNO · Cala, attacca o scarta'):'🟢 È IL TUO TURNO · Pesca dal mazzo o dallo scarto'):'⏳ Turno di '+G.players[G.turn].name;
  g.append(h('div','turn-banner'+(mt?'':' wait'),turnMsg));
- if(pend.length){const f=h('div','felt');pend.forEach(m=>{const r=h('div','meld');m.cards.forEach(c=>r.append(card(c)));f.append(r)});
+ if(pend.length){const f=h('div','felt');pend.forEach(m=>{const r=h('div','meld');m.cards.forEach(c=>r.append(card(c)));f.append(r)});g.append(f)}
+ let hd=hand();const all=new Set((G.hands[me]||[]).map(c=>c.i));myOrd=myOrd.filter(i=>all.has(i));(G.hands[me]||[]).forEach(c=>{if(!myOrd.includes(c.i))myOrd.push(c.i)});hd.sort((a,b)=>myOrd.indexOf(a.i)-myOrd.indexOf(b.i));
+ const hr=h('div','hand');hd.forEach(c=>{const el=card(c,()=>{if(noClick)return;sel.has(c.i)?sel.delete(c.i):sel.add(c.i);render()});el.onpointerdown=ev=>pdown(ev,c,el);el.onpointermove=pmove;el.onpointerup=pup;el.onpointercancel=()=>{drag=null;render()};hr.append(el)});g.append(hr);
  const bar=h('div','row'),B=(t,f,cls,dis)=>{const b=h('button',cls,t);b.onclick=f;b.disabled=!!dis;bar.append(b)};
  B('Ordina: '+(ord==1?'Valore':'Seme'),()=>{ord=ord==1?2:1;const a=[...(G.hands[me]||[])];a.sort(ord==1?(x,y)=>x.s-y.s||x.r-y.r:(x,y)=>x.r-y.r||x.s-y.s);myOrd=a.map(c=>c.i);render()},'sec');
  g.append(bar)}
