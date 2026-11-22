@@ -191,7 +191,7 @@ select{padding:7px;border-radius:8px;background:rgba(0,0,0,.3);color:#fff;border
 const SU=['♠','♥','♦','♣'],RK=[0,'A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 const $=id=>document.getElementById(id);
 const h=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
-let db,user,me,code,ref,G,sel=new Set(),pend=[],nick='',tk='',ord=0,tries=0,swap=0,bt,seen=new Set(),lr=0,cfk=0,unsub,wasMyTurn=false;
+let db,user,me,code,ref,G,sel=new Set(),pend=[],nick='',tk='',ord=0,tries=0,swap=0,bt,seen=new Set(),lr=0,cfk=0,unsub,wasMyTurn=false,botDiff='normal';
 let ft;const toast=(x,q)=>{$('st').textContent=x;if(q||!x)return;let f=$('fl');if(!f){f=h('div','fl');f.id='fl';document.body.append(f)}f.textContent=x;f.hidden=false;clearTimeout(ft);ft=setTimeout(()=>{f.hidden=true},3000)};
 const sh=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
 function mk(){const d=[];let id=0;for(let k=0;k<2;k++)for(let s=0;s<4;s++)for(let r=1;r<=13;r++)d.push({i:id++,r,s});for(let k=0;k<4;k++)d.push({i:id++,r:0,s:-1});return sh(d)}
@@ -280,19 +280,19 @@ function draw(fd){if(!myTurn())return;if(G.drawn)return toast('Hai già pescato'
  let st=[...G.stock],ds=[...G.discard],c;
  if(fd)c=ds.pop();else{if(!st.length){st=sh(ds.slice(0,-1));ds=ds.slice(-1)}c=st.pop()}
  if(!c)return;grab([c.i],fd?null:document.querySelector('#game .piles .back'));
+ vibra(25);
  ref.update({stock:st,discard:ds,hands:{...G.hands,[me]:[...G.hands[me],c]},drawn:true,dc:fd?c.i:null,msg:nm(me)+(fd?' pesca dallo scarto':' pesca dal mazzo')})}
 
 function stagePend(){if(!myTurn()||!G.drawn)return toast('Prima devi pescare dal mazzo');
  const cs=hand().filter(c=>sel.has(c.i));
  const m=meld(cs);if(!m)return toast('Combinazione non valida (min 3 carte)');
- grab([...sel]);pend.push(m);sel.clear();render()}
+ grab([...sel]);pend.push(m);sel.clear();vibra(30);render()}
 
 function confirmPend(){const t=pend.reduce((a,m)=>a+m.pts,0);
  if(!opn(me)&&t<40)return toast('Servono almeno 40 punti per aprire (ora sei a '+t+')');
  const hd=hand(),hands={...G.hands,[me]:hd},
   patch={table:[...G.table,...pend.map(m=>({cards:m.cards}))],opened:{...G.opened,[me]:G.round},hands,msg:nm(me)+' cala '+pend.length+(pend.length>1?' combinazioni':' combinazione')};
- grab(pend.flatMap(m=>m.cards.map(c=>c.i)));pend=[];sel.clear();hd.length?ref.update(patch):finish(me,hands,patch)}
-
+ grab(pend.flatMap(m=>m.cards.map(c=>c.i)));pend=[];sel.clear();vibra([35,30,45]);hd.length?ref.update(patch):finish(me,hands,patch)}
 function attach(i){if(!myTurn()||!G.drawn)return;
  if(!opn(me))return toast('Devi prima aprire con 40 punti');
  if(pend.length)return toast('Conferma o annulla prima le combinazioni preparate');
@@ -324,7 +324,7 @@ function discard(){if(!myTurn()||!G.drawn)return toast('Prima devi pescare');
  if(G.dc!=null&&G.hands[me].some(c=>c.i==G.dc)&&!pend.some(m=>m.cards.some(c=>c.i==G.dc)))return toast('Hai preso dallo scarto: devi usarla o rimetterla sullo scarto');
  if(pend.length)return toast('Conferma o annulla prima le carte sul tavolo');
  if(sel.size!=1)return toast('Trascina 1 sola carta sullo scarto');
- const c=hand().find(c=>sel.has(c.i)),hd=hand().filter(x=>x!=c),hands={...G.hands,[me]:hd};grab([c.i]);sel.clear();
+ const c=hand().find(c=>sel.has(c.i)),hd=hand().filter(x=>x!=c),hands={...G.hands,[me]:hd};grab([c.i]);sel.clear();vibra(35);
  const patch={hands,discard:[...G.discard,c],drawn:false,dc:null,turn:(G.turn+1)%G.players.length,msg:nm(me)+' scarta '+cname(c)};
  hd.length?ref.update(patch):finish(me,hands,patch)}
 
@@ -333,35 +333,135 @@ function finish(win,hands,patch){const op=patch.opened||G.opened,sc={...G.scores
  ref.update({...patch,hands,scores:sc,phase:'over',over:Object.values(sc).some(v=>v>=101),winner:win,msg:nm(win)+' chiude la mano!'})}
 
 const isBot=id=>String(id).startsWith('bot');
-function cands(hd){const out=[],n=hd.filter(c=>c.r),by={};
+const DIFF_LBL={easy:'Facile',normal:'Normale',hard:'Difficile',expert:'Esperto'};
+function cands(hd,useJokers=false){
+ const out=[],n=hd.filter(c=>c.r),jks=useJokers?hd.filter(c=>!c.r):[],by={};
  n.forEach(c=>{(by[c.r]=by[c.r]||[]).push(c)});
- Object.values(by).forEach(a=>{const u=[];a.forEach(c=>{if(!u.some(x=>x.s==c.s))u.push(c)});
-  if(u.length>=3){out.push(u);if(u.length==4)u.forEach((_,k)=>out.push(u.filter((_,j)=>j!=k)))}});
- for(let s=0;s<4;s++){const m={};n.filter(c=>c.s==s).forEach(c=>{m[c.r]=m[c.r]||c;if(c.r==1)m[14]=m[14]||c});
-  let run=[];for(let v=1;v<=15;v++){if(m[v])run.push(m[v]);else{if(run.length>=3)out.push(run.length>13?run.slice(0,13):run);run=[]}}}
- return out.map(x=>meld(x)).filter(Boolean)}
+ Object.values(by).forEach(a=>{
+  const u=[];a.forEach(c=>{if(!u.some(x=>x.s==c.s))u.push(c)});
+  if(u.length>=3){out.push(u);if(u.length==4)u.forEach((_,k)=>out.push(u.filter((_,j)=>j!=k)))}
+  if(u.length==2&&jks.length)out.push([...u,jks[0]]);
+ });
+ for(let s=0;s<4;s++){
+  const m={};n.filter(c=>c.s==s).forEach(c=>{m[c.r]=m[c.r]||c;if(c.r==1)m[14]=m[14]||c});
+  let run=[];for(let v=1;v<=15;v++){if(m[v])run.push(m[v]);else{if(run.length>=3)out.push(run.length>13?run.slice(0,13):run);run=[]}}
+  if(jks.length){
+   const vs=Object.keys(m).map(Number).sort((a,b)=>a-b);
+   for(let idx=0;idx<vs.length;idx++){
+    for(let gap=1;gap<=2;gap++){
+     const seq=[m[vs[idx]]],used=[jks[0]];
+     for(let step=1;step<=4;step++){
+      const target=vs[idx]+step;
+      if(target>14)break;
+      if(m[target])seq.push(m[target]);
+      else if(used.length)seq.push(used.pop());
+      else break;
+      if(seq.length>=3&&seq.length<=13)out.push([...seq]);
+     }
+    }
+   }
+  }
+ }
+ return out.map(x=>meld(x)).filter(Boolean);
+}
 function pick(cs){const used=new Set(),ch=[];cs.sort((a,b)=>b.pts-a.pts).forEach(m=>{if(m.cards.every(c=>!used.has(c.i))){m.cards.forEach(c=>used.add(c.i));ch.push(m)}});return ch}
-function botTurn(){const b=G.players[G.turn].id;let hd=[...G.hands[b]],st=[...G.stock],ds=[...G.discard],tb=G.table.map(m=>({cards:m.cards})),op={...G.opened};
+function botTurn(){
+ const botObj=G.players[G.turn],b=botObj.id,diff=botObj.diff||G.botDiff||'normal';
+ let hd=[...G.hands[b]],st=[...G.stock],ds=[...G.discard],tb=G.table.map(m=>({cards:m.cards})),op={...G.opened};
  const top=ds[ds.length-1];
- let took=0;if(top){const c0=pick(cands([...hd,top]));if(c0.some(m=>m.cards.some(c=>c.i==top.i))&&(op[b]===G.round||c0.reduce((a,m)=>a+m.pts,0)>=40)){hd.push(ds.pop());took=1}}
+ const allowJokers=(diff==='hard'||diff==='expert');
+ let took=0;
+ if(top && diff!=='easy'){
+  const c0=pick(cands([...hd,top],allowJokers));
+  const fitsOpen=(op[b]===G.round && diff==='expert' && tb.some(m=>meld([...m.cards,top])));
+  if((c0.some(m=>m.cards.some(c=>c.i==top.i))&&(op[b]===G.round||c0.reduce((a,m)=>a+m.pts,0)>=40))||fitsOpen){hd.push(ds.pop());took=1}
+ }
  if(!took){if(!st.length){st=sh(ds.slice(0,-1));ds=ds.slice(-1)}if(st.length)hd.push(st.pop())}
- const ch=pick(cands(hd)),tot=ch.reduce((a,m)=>a+m.pts,0);
- if(ch.length&&(op[b]===G.round||tot>=40)){ch.forEach(m=>{tb.push({cards:m.cards});m.cards.forEach(c=>{hd=hd.filter(x=>x.i!=c.i)})});op[b]=G.round}
- if(op[b]===G.round){let again=true;while(again&&hd.length){again=false;for(const c of hd){if(!c.r)continue;for(let i=0;i<tb.length;i++){const m=meld([...tb[i].cards,c]);if(m){tb[i]={cards:m.cards};hd=hd.filter(x=>x.i!=c.i);again=true;break}}if(again)break}}}
+ if(op[b]===G.round && diff==='expert'){
+  for(let i=0;i<tb.length;i++){
+   const tc=tb[i].cards;
+   for(let j=0;j<tc.length;j++){
+    if(tc[j].r)continue;
+    for(let k=0;k<hd.length;k++){
+     if(!hd[k].r)continue;
+     const t=tc.slice();t[j]=hd[k];const m2=meld(t);
+     if(m2&&(asSet(t)||m2.cards[j]===hd[k])){
+      tb[i]={cards:m2.cards};
+      const jk=tc[j];hd.splice(k,1,jk);
+      break;
+     }
+    }
+   }
+  }
+ }
+ const ch=pick(cands(hd,allowJokers)),tot=ch.reduce((a,m)=>a+m.pts,0);
+ if(ch.length&&(op[b]===G.round||tot>=40)){
+  ch.forEach(m=>{tb.push({cards:m.cards});m.cards.forEach(c=>{hd=hd.filter(x=>x.i!=c.i)})});
+  op[b]=G.round;
+ }
+ if(op[b]===G.round && diff!=='easy'){
+  let again=true;
+  while(again&&hd.length){
+   again=false;
+   for(const c of hd){
+    if(!c.r && !allowJokers)continue;
+    if(!c.r && hd.length>(diff==='expert'?3:2))continue;
+    for(let i=0;i<tb.length;i++){
+     const m=meld([...tb[i].cards,c]);
+     if(m){tb[i]={cards:m.cards};hd=hd.filter(x=>x.i!=c.i);again=true;break}
+    }
+    if(again)break;
+   }
+  }
+ }
  if(!hd.length)return finish(b,{...G.hands,[b]:hd},{table:tb,opened:op,stock:st,discard:ds});
- const u=c=>c.r?hd.filter(x=>x!=c&&x.r&&((x.r==c.r&&x.s!=c.s)||(x.s==c.s&&Math.abs(x.r-c.r)<=2))).length*3-pv(c)/10:99;
- const d=[...hd].sort((a,b)=>u(a)-u(b))[0];hd=hd.filter(x=>x!=d);
+ let d;
+ if(diff==='easy'){
+  const nonJ=hd.filter(c=>c.r);
+  const pool=nonJ.length?nonJ:hd;
+  d=pool[Math.floor(Math.random()*pool.length)];
+ } else if(diff==='expert'){
+  const tableRanks=new Set(tb.flatMap(m=>m.cards.filter(x=>x.r).map(x=>x.r)));
+  const uExp=c=>{
+   if(!c.r)return 9999;
+   const pairs=hd.filter(x=>x!=c&&x.r&&((x.r==c.r&&x.s!=c.s)||(x.s==c.s&&Math.abs(x.r-c.r)<=2))).length;
+   const fitsTable=tb.some(m=>meld([...m.cards,c]))?6:0;
+   const safe=tableRanks.has(c.r)?-1.5:0;
+   return (pairs*5)+fitsTable+safe-(pv(c)/4);
+  };
+  d=[...hd].sort((a,b)=>uExp(a)-uExp(b))[0];
+ } else if(diff==='hard'){
+  const uHard=c=>{
+   if(!c.r)return 999;
+   const pairs=hd.filter(x=>x!=c&&x.r&&((x.r==c.r&&x.s!=c.s)||(x.s==c.s&&Math.abs(x.r-c.r)<=2))).length;
+   const fitsTable=tb.some(m=>meld([...m.cards,c]))?4:0;
+   return (pairs*4)+fitsTable-(pv(c)/5);
+  };
+  d=[...hd].sort((a,b)=>uHard(a)-uHard(b))[0];
+ } else {
+  const u=c=>c.r?hd.filter(x=>x!=c&&x.r&&((x.r==c.r&&x.s!=c.s)||(x.s==c.s&&Math.abs(x.r-c.r)<=2))).length*3-pv(c)/10:99;
+  d=[...hd].sort((a,b)=>u(a)-u(b))[0];
+ }
+ hd=hd.filter(x=>x!=d);
  const hs={...G.hands,[b]:hd},pt={stock:st,discard:[...ds,d],table:tb,opened:op,drawn:false,dc:null,turn:(G.turn+1)%G.players.length,msg:nm(b)+' gioca e scarta '+cname(d)};
- hd.length?ref.update({...pt,hands:hs}):finish(b,hs,pt)}
+ hd.length?ref.update({...pt,hands:hs}):finish(b,hs,pt);
+}
 function leave(){clearTimeout(bt);if(unsub)unsub();unsub=null;
  if(G&&G.phase=='lobby'){const rest=G.players.filter(p=>p.id!=me),nh=(rest.find(p=>!isBot(p.id))||{}).id;ref.update({players:rest,host:G.host==me&&nh?nh:G.host}).catch(()=>{})}
  try{localStorage.removeItem('s40')}catch(e){}
- G=null;ref=null;code=null;tk='';tries=0;pend=[];sel.clear();$('game').hidden=true;$('login').hidden=false;toast('')}
+ G=null;ref=null;code=null;tk='';tries=0;pend=[];sel.clear();wasMyTurn=false;$('game').hidden=true;$('login').hidden=false;toast('')}
+function vibra(pattern){
+ try{
+  if(typeof navigator!=='undefined'&&typeof navigator.vibrate==='function'){
+   navigator.vibrate(pattern);
+  }
+ }catch(e){}
+}
 function render(){if(drag){late=1;return}render0();if(G)runFly()}
 function render0(){if(!G)return;const g=$('game');g.textContent='';
  const isNowMyTurn=myTurn();
  g.classList.toggle('my-turn-glow',isNowMyTurn);
- if(isNowMyTurn&&!wasMyTurn){try{if(navigator.vibrate)navigator.vibrate([80,50,80])}catch(e){}}
+ if(isNowMyTurn&&!wasMyTurn){vibra([120,60,120,60,160])}
  wasMyTurn=isNowMyTurn;
  const lv=h('button','sec','Esci');lv.style.cssText='float:right;padding:4px 8px;font-size:12px';
  lv.onclick=()=>{if(G.phase=='play'&&lv.dataset.a!='1'){lv.dataset.a='1';lv.textContent='Sicuro?';setTimeout(()=>{lv.dataset.a='';lv.textContent='Esci'},3000);return}leave()};
@@ -369,11 +469,23 @@ function render0(){if(!G)return;const g=$('game');g.textContent='';
  if(G.phase=='lobby'){
   g.append(h('h3',0,'Giocatori ('+G.players.length+'/'+(G.max||4)+')'));
   if(G.players.length<(G.max||4))g.append(h('p','note','Mancano '+((G.max||4)-G.players.length)+' giocatori: condividi il codice o aggiungi dei bot'));
-  G.players.forEach(p=>g.append(h('div',0,'• '+p.name+(p.id==G.host?' 👑':''))));
+  G.players.forEach(p=>g.append(h('div',0,'• '+p.name+(p.id==G.host?' 👑':'')+(isBot(p.id)?' ['+(DIFF_LBL[p.diff||'normal'])+']':''))));
   if(G.host==me){
     const rBtns=h('div','row');
     const b=h('button',0,'Inizia la partita');b.disabled=G.players.length<(G.max||4);b.onclick=()=>start(true);rBtns.append(b);
-    if(G.players.length<(G.max||4)){const a=h('button','sec','+ Bot');a.onclick=()=>ref.update({players:[...G.players,{id:'bot'+Math.random().toString(36).slice(2,6),name:'Bot '+(G.players.filter(p=>isBot(p.id)).length+1)}]});rBtns.append(a)}
+    if(G.players.length<(G.max||4)){
+      const selDiff=h('select');
+      [['easy','Bot: Facile'],['normal','Bot: Normale'],['hard','Bot: Difficile'],['expert','Bot: Esperto']].forEach(([val,txt])=>{
+        const opt=h('option',0,txt);opt.value=val;if(val===botDiff)opt.selected=true;selDiff.append(opt);
+      });
+      selDiff.onchange=()=>{botDiff=selDiff.value};
+      const a=h('button','sec','+ Bot');
+      a.onclick=()=>{
+        const num=G.players.filter(p=>isBot(p.id)).length+1;
+        ref.update({players:[...G.players,{id:'bot'+Math.random().toString(36).slice(2,6),name:'Bot '+num+' ('+DIFF_LBL[botDiff]+')',diff:botDiff}]});
+      };
+      rBtns.append(selDiff,a);
+    }
     g.append(rBtns);
   }
   else g.append(h('p','note','In attesa che l’host inizi…'));
