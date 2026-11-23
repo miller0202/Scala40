@@ -250,10 +250,18 @@ function pup(ev){if(!drag)return;const d=drag;drag=null;
     if (!sel.has(d.id)) sel.add(d.id);
     let targetMeldIndex = -1;
     document.querySelectorAll('.tbl .meld:not(.pend-meld)').forEach((mEl, idx)=>{
-      if (isOver(ev, mEl)) targetMeldIndex = idx;
+      const r = mEl.getBoundingClientRect();
+      if (ev.clientX >= r.left - 14 && ev.clientX <= r.right + 14 && ev.clientY >= r.top - 14 && ev.clientY <= r.bottom + 14) {
+        targetMeldIndex = idx;
+      }
     });
-    if (targetMeldIndex >= 0) { attach(targetMeldIndex); }
-    else { stagePend(); }
+    if (targetMeldIndex >= 0) { attach(targetMeldIndex); return; }
+    const cs = hand().filter(c => sel.has(c.i));
+    if (opn(me) && !pend.length && cs.length < 3) {
+      const autoIdx = G.table.findIndex(m => meld([...m.cards, ...cs]));
+      if (autoIdx >= 0) { attach(autoIdx); return; }
+    }
+    stagePend();
     return;
   }
 
@@ -506,7 +514,7 @@ function render0(){if(!G)return;const g=$('game');g.textContent='';
   if(G.host==me){const b=h('button',0,G.over?'Nuova partita':'Prossima mano');b.style.marginTop='10px';b.onclick=()=>start(G.over);g.append(b)}
   else g.append(h('p','note','Attendi che l’host avvii la prossima mano.'));return}
  const mt=myTurn(),tb=h('div','tbl');
- G.table.forEach((m,i)=>{const r=h('div','meld');m.cards.forEach((c,j)=>r.append(card(c,c.r?0:ev=>{ev.stopPropagation();swapJ(i,j)},'t')));tb.append(r)});
+ G.table.forEach((m,i)=>{const r=h('div','meld');m.cards.forEach((c,j)=>r.append(card(c,c.r?0:ev=>{ev.stopPropagation();swapJ(i,j)},'t')));r.onclick=()=>attach(i);tb.append(r)});
  if(pend.length){
   pend.forEach((m,pi)=>{
    const r=h('div','meld pend-meld');
